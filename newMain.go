@@ -192,6 +192,7 @@ func main() {
 	}))
 
 	router.GET("/food", getFoods)
+	router.GET("/food/:id", getFoodByID)
 	router.POST("/food", postFood)
 	router.PUT("/food/:id", updateFood)
 	router.DELETE("/food/:id", deleteFood)
@@ -276,4 +277,26 @@ func deleteFood(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Food deleted successfully"})
+}
+
+func getFoodByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var food Food
+
+	sqlStatement := `SELECT id, name, description, price FROM foods WHERE id = $1`
+
+	//Query row untuk mengharapkan suatu hasil
+	err := db.QueryRow(sqlStatement, id).Scan(&food.ID, &food.Name, &food.Description, &food.Price)
+	if err != nil {
+		// Jika tidak ada baris yang ditemukan, kirim error 404 Not Found
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Food not found"})
+			return
+		}
+		// Untuk Error lainnya
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, food)
 }
