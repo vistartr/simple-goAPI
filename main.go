@@ -1,5 +1,3 @@
-package main
-
 // import (
 // 	"database/sql"
 // 	"encoding/json"
@@ -106,3 +104,50 @@ package main
 // 	w.WriteHeader(http.StatusCreated)
 // 	json.NewEncoder(w).Encode(newFood)
 // }
+
+package main
+
+import (
+	"fmt"
+	"my-first-api/config"
+	"my-first-api/handlers"
+	"my-first-api/repository"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	// 1. Connect database
+	db := config.ConnectDatabase()
+	defer db.Close()
+
+	// 2. Buat instance dari Repository
+	foodRepo := repository.NewFoodRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	// 3. Buat instance dari Handler
+	foodHandler := handlers.NewFoodHandler(foodRepo)
+	userHandler := handlers.NewUserHandler(userRepo)
+
+	// 4. Setup Router Gin
+	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
+
+	// 5. Definisikan Rute, menunjuk ke fungsi di dalam Handler
+	router.GET("/food", foodHandler.GetFoods)
+	router.GET("food/:id", foodHandler.GetFoodByID)
+	router.POST("/food", foodHandler.PostFood)
+	router.PUT("/food/:id", foodHandler.UpdateFood)
+	router.DELETE("/food/:id", foodHandler.DeleteFood)
+
+	router.POST("/register", userHandler.RegisterUser)
+
+	fmt.Println("Server Gin listening on port 8080...")
+	router.Run(":8080")
+}
