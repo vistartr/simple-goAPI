@@ -26,3 +26,14 @@ func (r *UserRepository) SaveUser(user models.User) (int, error) {
 	}
 	return userID, nil
 }
+
+func (r *UserRepository) FindByUsername(username string) (models.User, error) {
+	var user models.User
+	sqlStatement := `SELECT id, username, password_hash, role FROM users WHERE username = $1`
+
+	err := r.DB.QueryRow(sqlStatement, username).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}

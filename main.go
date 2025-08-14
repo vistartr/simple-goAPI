@@ -108,6 +108,7 @@
 package main
 
 import (
+	// "database/sql"
 	"fmt"
 	"my-first-api/config"
 	"my-first-api/handlers"
@@ -117,7 +118,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var jwtSecret = []byte("kunci_rahasia_yang_sangat_aman_dan_panjang")
+
+// token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzU1MjYzNjM1fQ._yoHSUDt0dhHyg42JDeFVMuSTvxza-N8DZdOXJGjVE0"
+
 func main() {
+
 	// 1. Connect database
 	db := config.ConnectDatabase()
 	defer db.Close()
@@ -128,7 +134,7 @@ func main() {
 
 	// 3. Buat instance dari Handler
 	foodHandler := handlers.NewFoodHandler(foodRepo)
-	userHandler := handlers.NewUserHandler(userRepo)
+	userHandler := handlers.NewUserHandler(userRepo, jwtSecret)
 
 	// 4. Setup Router Gin
 	router := gin.Default()
@@ -147,6 +153,7 @@ func main() {
 	router.DELETE("/food/:id", foodHandler.DeleteFood)
 
 	router.POST("/register", userHandler.RegisterUser)
+	router.POST("/login", userHandler.LoginUser)
 
 	fmt.Println("Server Gin listening on port 8080...")
 	router.Run(":8080")
