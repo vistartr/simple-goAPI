@@ -1,5 +1,3 @@
-package main
-
 // import (
 // 	"database/sql"
 // 	"encoding/json"
@@ -106,3 +104,61 @@ package main
 // 	w.WriteHeader(http.StatusCreated)
 // 	json.NewEncoder(w).Encode(newFood)
 // }
+
+package main
+
+import (
+	"fmt"
+	"my-first-api/config"
+	"my-first-api/handlers"
+	"my-first-api/repository"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+// Definisikan kunci rahasia HANYA DI SINI
+var jwtSecret = []byte("kunci_rahasia_yang_sangat_aman_dan_panjang")
+
+func main() {
+	// 1. Hubungkan ke Database
+	db := config.ConnectDatabase()
+	defer db.Close()
+
+	// 2. Buat instance dari semua Repository
+	foodRepo := repository.NewFoodRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	// 3. Buat instance dari semua Handler
+	foodHandler := handlers.NewFoodHandler(foodRepo)
+	userHandler := handlers.NewUserHandler(userRepo, jwtSecret)
+
+	// 4. Setup Router Gin
+	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
+
+	// 5. Definisikan Rute
+	// Rute Publik (tidak perlu login)
+	router.GET("/food", foodHandler.GetFoods)
+	router.GET("/food/:id", foodHandler.GetFoodByID)
+	router.POST("/register", userHandler.RegisterUser)
+	router.POST("/login", userHandler.LoginUser)
+
+	// Grup rute yang hanya bisa diakses oleh ADMIN
+	adminRoutes := router.Group("/")
+	adminRoutes.Use(userHandler.AdminMiddleware())
+	{
+		adminRoutes.POST("/food", foodHandler.PostFood)
+		adminRoutes.PUT("/food/:id", foodHandler.UpdateFood)
+		adminRoutes.DELETE("/food/:id", foodHandler.DeleteFood)
+	}
+
+	// 6. Jalankan server
+	fmt.Println("Server Gin listening on port 8080...")
+	router.Run(":8080")
+}
