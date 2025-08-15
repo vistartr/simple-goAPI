@@ -108,7 +108,6 @@
 package main
 
 import (
-	// "database/sql"
 	"fmt"
 	"my-first-api/config"
 	"my-first-api/handlers"
@@ -118,21 +117,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Definisikan kunci rahasia HANYA DI SINI
 var jwtSecret = []byte("kunci_rahasia_yang_sangat_aman_dan_panjang")
 
-// token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzU1MjYzNjM1fQ._yoHSUDt0dhHyg42JDeFVMuSTvxza-N8DZdOXJGjVE0"
-
 func main() {
-
-	// 1. Connect database
+	// 1. Hubungkan ke Database
 	db := config.ConnectDatabase()
 	defer db.Close()
 
-	// 2. Buat instance dari Repository
+	// 2. Buat instance dari semua Repository
 	foodRepo := repository.NewFoodRepository(db)
 	userRepo := repository.NewUserRepository(db)
 
-	// 3. Buat instance dari Handler
+	// 3. Buat instance dari semua Handler
 	foodHandler := handlers.NewFoodHandler(foodRepo)
 	userHandler := handlers.NewUserHandler(userRepo, jwtSecret)
 
@@ -145,16 +142,23 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// 5. Definisikan Rute, menunjuk ke fungsi di dalam Handler
+	// 5. Definisikan Rute
+	// Rute Publik (tidak perlu login)
 	router.GET("/food", foodHandler.GetFoods)
-	router.GET("food/:id", foodHandler.GetFoodByID)
-	router.POST("/food", foodHandler.PostFood)
-	router.PUT("/food/:id", foodHandler.UpdateFood)
-	router.DELETE("/food/:id", foodHandler.DeleteFood)
-
+	router.GET("/food/:id", foodHandler.GetFoodByID)
 	router.POST("/register", userHandler.RegisterUser)
 	router.POST("/login", userHandler.LoginUser)
 
+	// Grup rute yang hanya bisa diakses oleh ADMIN
+	adminRoutes := router.Group("/")
+	adminRoutes.Use(userHandler.AdminMiddleware())
+	{
+		adminRoutes.POST("/food", foodHandler.PostFood)
+		adminRoutes.PUT("/food/:id", foodHandler.UpdateFood)
+		adminRoutes.DELETE("/food/:id", foodHandler.DeleteFood)
+	}
+
+	// 6. Jalankan server
 	fmt.Println("Server Gin listening on port 8080...")
 	router.Run(":8080")
 }
